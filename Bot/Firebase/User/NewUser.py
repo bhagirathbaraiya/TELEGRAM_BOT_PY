@@ -1,17 +1,23 @@
 from datetime import datetime
 from ..firebase_config import initialize_firebase
 
-async def new_user(chat_id, username, first_name, last_name):
+async def new_user(user_id, username, first_name, last_name):
     try:
         db = initialize_firebase()
+        if db is None:
+            return
+        
         user_data = {
-            'chat_id': chat_id,
-            'username': username,
-            'first_name': first_name,
-            'last_name': last_name,
-            'allowed': False,
-            'created_at': datetime.now(),
+            'data': {
+                'userID': str(user_id),
+                'username': username or '',
+                'firstName': first_name or '',
+                'lastName': last_name or '',
+                'status': 'blocked',
+                'joinedDate': datetime.now().strftime('%m/%d/%Y')
+            }
         }
-        db.collection('users').document(str(chat_id)).set(user_data)
+        
+        await db.ref(f'MU_BOT/USERS/{user_id}').set(user_data)
     except Exception as e:
         print(f"Error adding new user: {e}")

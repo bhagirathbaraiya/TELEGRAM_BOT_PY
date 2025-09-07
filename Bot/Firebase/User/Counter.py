@@ -1,26 +1,29 @@
 from datetime import datetime
 from ..firebase_config import initialize_firebase
 
-async def counter(id_value, id_type):
+async def counter(id_value, type_value):
     try:
         db = initialize_firebase()
-        counter_ref = db.collection('counters').document(f"{id_type}_{id_value}")
-        counter_doc = counter_ref.get()
+        if db is None:
+            print("Error updating counter: Firebase not initialized")
+            return
         
-        if counter_doc.exists:
-            current_count = counter_doc.to_dict().get('count', 0)
-            counter_ref.update({
-                'count': current_count + 1,
-                'last_used': datetime.now()
-            })
+        counter_ref = db.ref(f'MU_BOT/COUNTERS/{type_value}_{id_value}')
+        snapshot = await counter_ref.get()
+        
+        if snapshot.exists:
+            current_data = snapshot.val()
+            count = current_data.get('count', 0) + 1
         else:
-            counter_ref.set({
-                'id': id_value,
-                'type': id_type,
-                'count': 1,
-                'created_at': datetime.now(),
-                'last_used': datetime.now()
-            })
+            count = 1
         
+        counter_data = {
+            'id': id_value,
+            'type': type_value,
+            'count': count,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        await counter_ref.set(counter_data)
     except Exception as e:
         print(f"Error updating counter: {e}")

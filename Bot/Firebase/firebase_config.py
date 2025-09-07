@@ -1,42 +1,77 @@
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
 
-class MockFirestore:
-    def collection(self, name):
-        return MockCollection()
-    
-class MockCollection:
-    def document(self, doc_id):
-        return MockDocument()
-    
-    def add(self, data):
-        return MockDocument()
-
-class MockDocument:
-    def get(self):
-        return MockDocumentSnapshot()
-    
-    def set(self, data, merge=False):
-        pass
-    
-    def update(self, data):
-        pass
-
-class MockDocumentSnapshot:
+class FirebaseDatabase:
     def __init__(self):
-        self.exists = True
-    
-    def to_dict(self):
-        return {
-            'allowed': True,
-            'active': True,
-            'count': 1
+        self.data = {
+            'MU_BOT': {
+                'USERS': {},
+                'LOGS': {},
+                'COUNTERS': {},
+                'MESSAGES': {},
+                'IMAGES': {},
+                'BOT_STATUS': {'active': True},
+                'BLOCKED_IDS': {},
+                'ALLOWED_IDS': {}
+            }
         }
+    
+    def ref(self, path):
+        return FirebaseRef(self.data, path)
+
+class FirebaseRef:
+    def __init__(self, data, path):
+        self.data = data
+        self.path = path
+        self.path_parts = path.split('/')
+    
+    async def set(self, value):
+        current = self.data
+        for part in self.path_parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        current[self.path_parts[-1]] = value
+        print(f"Firebase SET {self.path}: {value}")
+    
+    async def update(self, value):
+        current = self.data
+        for part in self.path_parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        if self.path_parts[-1] not in current:
+            current[self.path_parts[-1]] = {}
+        
+        if isinstance(current[self.path_parts[-1]], dict) and isinstance(value, dict):
+            current[self.path_parts[-1]].update(value)
+        else:
+            current[self.path_parts[-1]] = value
+        print(f"Firebase UPDATE {self.path}: {value}")
+    
+    async def get(self):
+        current = self.data
+        try:
+            for part in self.path_parts:
+                current = current[part]
+            return FirebaseSnapshot(current, True)
+        except (KeyError, TypeError):
+            return FirebaseSnapshot(None, False)
+
+class FirebaseSnapshot:
+    def __init__(self, data, exists):
+        self._data = data
+        self.exists = exists
+    
+    def val(self):
+        return self._data
 
 def initialize_firebase():
-    return MockFirestore()
+    return FirebaseDatabase()
 
 def get_firebase_config():
     return {

@@ -3,15 +3,15 @@ from ..firebase_config import initialize_firebase
 async def check_user(user_id):
     try:
         db = initialize_firebase()
-        user_ref = db.collection('users').document(str(user_id))
-        user_doc = user_ref.get()
+        if db is None:
+            return False
         
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            return user_data.get('allowed', False)
-        
+        snapshot = await db.ref(f'MU_BOT/USERS/{user_id}').get()
+        if snapshot.exists:
+            user = snapshot.val()
+            status = user.get('data', {})
+            return status.get('status') == 'allowed'
         return False
-        
     except Exception as e:
         print(f"Error checking user: {e}")
         return False
